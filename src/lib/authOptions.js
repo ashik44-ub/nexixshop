@@ -1,12 +1,15 @@
-import CredentialsProvider from "next-auth/providers/credentials";
+import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
+import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import dbConnect from "@/lib/dbConnect";
 import User from "@/models/User";
 
-// ES Module Scope Fix (NextAuth Provider Workaround)
-const Google = GoogleProvider.default || GoogleProvider;
-const Credentials = CredentialsProvider.default || CredentialsProvider;
+// Next.js ESM/CommonJS Webpack Resolver Fix
+const getProvider = (provider) => (typeof provider === "function" ? provider : provider.default);
+
+const Google = getProvider(GoogleProvider);
+const Credentials = getProvider(CredentialsProvider);
 
 export const authOptions = {
   providers: [

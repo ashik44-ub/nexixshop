@@ -17,13 +17,21 @@ function LoginForm() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    const res = await signIn("credentials", { ...form, redirect: false });
+
+    const res = await signIn("credentials", {
+      email: form.email,
+      password: form.password,
+      redirect: false,
+    });
+
     setLoading(false);
+
     if (res?.error) {
       toast.error(res.error);
-    } else {
+    } else if (res?.ok) {
       toast.success("Welcome back!");
       router.push(callbackUrl);
+      router.refresh(); // Client Side Session State Refresh এর জন্য
     }
   };
 
@@ -32,7 +40,9 @@ function LoginForm() {
       <h1 className="text-2xl font-bold text-center">Welcome Back</h1>
       <p className="text-center text-gray-500 text-sm mt-1 mb-6">Log in to your account</p>
 
+      {/* type="button" যুক্ত করা হয়েছে যাতে ফর্ম সাবমিশনের সাথে কনফ্লিক্ট না করে */}
       <button
+        type="button"
         onClick={() => signIn("google", { callbackUrl })}
         className="btn-outline w-full flex items-center justify-center gap-2 mb-4"
       >
@@ -46,10 +56,26 @@ function LoginForm() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <input required type="email" placeholder="Email" className="input-field" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-        <input required type="password" placeholder="Password" className="input-field" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+        <input
+          required
+          type="email"
+          placeholder="Email"
+          className="input-field"
+          value={form.email}
+          onChange={(e) => setForm({ ...form, email: e.target.value })}
+        />
+        <input
+          required
+          type="password"
+          placeholder="Password"
+          className="input-field"
+          value={form.password}
+          onChange={(e) => setForm({ ...form, password: e.target.value })}
+        />
         <div className="text-right">
-          <Link href="/forgot-password" className="text-sm text-primary-600">Forgot password?</Link>
+          <Link href="/forgot-password" className="text-sm text-primary-600">
+            Forgot password?
+          </Link>
         </div>
         <button type="submit" disabled={loading} className="btn-primary w-full">
           {loading ? "Logging in..." : "Log In"}
@@ -57,7 +83,10 @@ function LoginForm() {
       </form>
 
       <p className="text-center text-sm text-gray-500 mt-6">
-        Don&apos;t have an account? <Link href="/register" className="text-primary-600 font-medium">Sign up</Link>
+        Don&apos;t have an account?{" "}
+        <Link href="/register" className="text-primary-600 font-medium">
+          Sign up
+        </Link>
       </p>
     </div>
   );

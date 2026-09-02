@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // PDFKit এবং Fontkit-কে Turbopack বান্ডলার থেকে বাদ দিয়ে সার্ভারে রান করার জন্য
+  serverExternalPackages: ["pdfkit", "fontkit"],
+
   images: {
     remotePatterns: [
       {
@@ -8,11 +11,15 @@ const nextConfig = {
       },
       {
         protocol: "https",
-        hostname: "lh3.googleusercontent.com", // Google/NextAuth ছবির জন্য
+        hostname: "lh3.googleusercontent.com", // Google Profile Photos
       },
       {
         protocol: "https",
-        hostname: "**.fbcdn.net", // ফেসবুকের সকল CDN সাবডোমেন অ্যালাউ করার জন্য
+        hostname: "*.fbcdn.net", // Facebook CDN Images
+      },
+      {
+        protocol: "https",
+        hostname: "platform-lookaside.fbsbx.com", // Facebook Profile Pictures
       },
       {
         protocol: "http",
