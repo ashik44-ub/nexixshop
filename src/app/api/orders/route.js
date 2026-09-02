@@ -16,12 +16,22 @@ export async function POST(req) {
 
   await dbConnect();
   const body = await req.json();
-  const { items, shippingAddress, paymentMethod } = body;
+  const { items, shippingAddress, paymentMethod, shippingPrice: reqShippingPrice } = body;
 
   if (!items?.length) return NextResponse.json({ message: "Cart is empty" }, { status: 400 });
 
+  // ✅ items-কে স্পষ্টভাবে map করে size নিশ্চিত করা
+  const formattedItems = items.map((item) => ({
+    product: item.product,
+    name: item.name,
+    image: item.image,
+    price: item.price,
+    quantity: item.quantity,
+    size: item.size || null, // 👈 নিশ্চিতভাবে size সেভ হবে
+  }));
+
   let itemsPrice = 0;
-  for (const item of items) {
+  for (const item of formattedItems) {
     const product = await Product.findById(item.product);
     if (!product || product.stock < item.quantity) {
       return NextResponse.json(
@@ -32,24 +42,28 @@ export async function POST(req) {
     itemsPrice += (product.discountPrice || product.price) * item.quantity;
   }
 
-  const shippingPrice = itemsPrice > 5000 ? 0 : 100;
+  // শিপিং ফি নির্ধারণ
+  const shippingPrice = typeof reqShippingPrice === "number" 
+    ? reqShippingPrice 
+    : (shippingAddress?.deliveryZone === "inside_dhaka" ? 80 : 120);
+
   const totalPrice = itemsPrice + shippingPrice;
 
   const order = await Order.create({
     orderNumber: generateOrderNumber(),
     user: session.user.id,
-    items,
+    items: formattedItems, // 👈 ফরম্যাট করা items সেভ করা হচ্ছে
     shippingAddress,
     paymentMethod,
     itemsPrice,
     shippingPrice,
     totalPrice,
-    paymentStatus: paymentMethod === "cod" ? "pending" : "pending",
+    paymentStatus: "pending",
   });
 
-  // Decrement stock only for COD immediately; for online payment, decrement on payment success webhook
+  // Decrement stock only for COD immediately
   if (paymentMethod === "cod") {
-    for (const item of items) {
+    for (const item of formattedItems) {
       await Product.findByIdAndUpdate(item.product, { $inc: { stock: -item.quantity } });
     }
   }

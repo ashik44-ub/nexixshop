@@ -7,6 +7,7 @@ const OrderItemSchema = new mongoose.Schema(
     image: String,
     price: Number,
     quantity: Number,
+    size: String, // ✅ Size ফিল্ডটি যোগ করা হয়েছে
   },
   { _id: false }
 );
@@ -23,6 +24,7 @@ const OrderSchema = new mongoose.Schema(
       city: String,
       postCode: String,
       country: String,
+      deliveryZone: String, // ✅ Delivery Zone ফিল্ডটি যোগ করা হয়েছে
     },
     paymentMethod: { type: String, enum: ["stripe", "sslcommerz", "cod"], required: true },
     paymentStatus: { type: String, enum: ["pending", "paid", "failed", "refunded"], default: "pending" },

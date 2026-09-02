@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Header from "@/components/store/Header";
 import Footer from "@/components/store/Footer";
 import { useCartStore } from "@/store/cartStore";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
 import LoadingSpinner from "@/components/LoadingSpinner";
 
@@ -13,9 +13,21 @@ export default function CheckoutPage() {
   const { items, totalPrice, clearCart } = useCartStore();
   const { data: session, status } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Cart Page থেকে সিলেক্ট করা zone রিসিভ করা (যদি থাকে)
+  const zoneQuery = searchParams.get("zone");
+
   const [loading, setLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("stripe");
+  const [deliveryZone, setDeliveryZone] = useState(zoneQuery || "inside_dhaka");
   const [form, setForm] = useState({ name: "", phone: "", line1: "", city: "", postCode: "", country: "Bangladesh" });
+
+  useEffect(() => {
+    if (zoneQuery) {
+      setDeliveryZone(zoneQuery);
+    }
+  }, [zoneQuery]);
 
   if (status === "loading") return (<><Header /><LoadingSpinner full size="lg" /><Footer /></>);
 
@@ -32,7 +44,8 @@ export default function CheckoutPage() {
     );
   }
 
-  const shippingPrice = totalPrice() > 5000 ? 0 : 100;
+  // ঢাকার ভেতরে ৮০ টাকা এবং ঢাকার বাইরে ১২০ টাকা
+  const shippingPrice = deliveryZone === "inside_dhaka" ? 80 : 120;
   const total = totalPrice() + shippingPrice;
 
   const handleSubmit = async (e) => {
@@ -44,8 +57,17 @@ export default function CheckoutPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          items: items.map((i) => ({ product: i.product, name: i.name, image: i.image, price: i.price, quantity: i.quantity })),
-          shippingAddress: form,
+          // ✅ size ফিল্ডটি ব্যাকএন্ডে পাঠানোর জন্য এখানে i.size যুক্ত করা হয়েছে
+          items: items.map((i) => ({
+            product: i.product,
+            name: i.name,
+            image: i.image,
+            price: i.price,
+            quantity: i.quantity,
+            size: i.size || null,
+          })),
+          shippingAddress: { ...form, deliveryZone },
+          shippingPrice,
           paymentMethod,
         }),
       });
@@ -105,6 +127,33 @@ export default function CheckoutPage() {
                 <input required placeholder="City" className="input-field" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
                 <input required placeholder="Post Code" className="input-field" value={form.postCode} onChange={(e) => setForm({ ...form, postCode: e.target.value })} />
               </div>
+
+              {/* Delivery Zone Selection */}
+              <div className="pt-2">
+                <label className="block text-sm font-semibold mb-2">Delivery Area</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className={`flex items-center gap-2 border rounded-lg p-3 cursor-pointer ${deliveryZone === "inside_dhaka" ? "border-primary-600 bg-primary-50" : "border-gray-200"}`}>
+                    <input
+                      type="radio"
+                      name="deliveryZone"
+                      value="inside_dhaka"
+                      checked={deliveryZone === "inside_dhaka"}
+                      onChange={() => setDeliveryZone("inside_dhaka")}
+                    />
+                    <span className="text-sm font-medium">Inside Dhaka (৳80)</span>
+                  </label>
+                  <label className={`flex items-center gap-2 border rounded-lg p-3 cursor-pointer ${deliveryZone === "outside_dhaka" ? "border-primary-600 bg-primary-50" : "border-gray-200"}`}>
+                    <input
+                      type="radio"
+                      name="deliveryZone"
+                      value="outside_dhaka"
+                      checked={deliveryZone === "outside_dhaka"}
+                      onChange={() => setDeliveryZone("outside_dhaka")}
+                    />
+                    <span className="text-sm font-medium">Outside Dhaka (৳120)</span>
+                  </label>
+                </div>
+              </div>
             </div>
 
             <div className="card p-6 space-y-3">
@@ -125,18 +174,24 @@ export default function CheckoutPage() {
           <div className="card p-6 h-fit">
             <h2 className="font-bold mb-4">Order Summary</h2>
             {items.map((item) => (
-              <div key={item.product} className="flex justify-between text-sm mb-2">
-                <span className="truncate mr-2">{item.name} × {item.quantity}</span>
-                <span>${(item.price * item.quantity).toFixed(2)}</span>
+              <div key={item.size ? `${item.product}-${item.size}` : item.product} className="flex justify-between text-sm mb-2">
+                <div>
+                  <span className="truncate mr-2 block font-medium">{item.name} × {item.quantity}</span>
+                  {/* Summary-তে Size ডিসপ্লে */}
+                  {item.size && (
+                    <span className="text-xs text-gray-500">Size: {item.size}</span>
+                  )}
+                </div>
+                <span>৳{(item.price * item.quantity).toFixed(2)}</span>
               </div>
             ))}
             <div className="flex justify-between text-sm mt-3 text-gray-500">
               <span>Shipping</span>
-              <span>{shippingPrice === 0 ? "Free" : `$${shippingPrice.toFixed(2)}`}</span>
+              <span>৳{shippingPrice.toFixed(2)}</span>
             </div>
             <div className="flex justify-between font-bold text-lg border-t pt-4 mt-4 mb-4">
               <span>Total</span>
-              <span>${total.toFixed(2)}</span>
+              <span>৳{total.toFixed(2)}</span>
             </div>
             <button type="submit" disabled={loading} className="btn-primary w-full">
               {loading ? "Processing..." : "Place Order"}

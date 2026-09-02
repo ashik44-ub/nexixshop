@@ -27,8 +27,8 @@ export async function GET(req, { params }) {
   doc.text(`Date: ${new Date(order.createdAt).toLocaleDateString()}`, { align: "right" });
   doc.moveDown();
 
-  doc.fontSize(14).text("Topz Fashions", 50, 50);
-  doc.fontSize(10).text("123 Commerce Street, Dhaka, Bangladesh");
+  // 👈 Topz Fashions এবং ঠিকানা বাদ দিয়ে শুধু Nexix Shop দেওয়া হলো
+  doc.fontSize(14).text("Nexix Shop", 50, 50);
   doc.moveDown();
 
   doc.fontSize(12).text("Billed to:");
@@ -51,11 +51,15 @@ export async function GET(req, { params }) {
 
   let y = tableTop + 25;
   order.items.forEach((item) => {
-    doc.text(item.name, 50, y, { width: 240 });
+    // 👈 প্রোডাক্টের নামের সাথে সাইজ সরাসরি যুক্ত করা হলো যাতে কোনোভাবেই মিস না হয়
+    const displayName = item.size ? `${item.name} (Size: ${item.size})` : item.name;
+
+    doc.fontSize(10).fillColor("black").text(displayName, 50, y, { width: 240 });
     doc.text(String(item.quantity), 300, y);
     doc.text(`$${item.price.toFixed(2)}`, 370, y);
     doc.text(`$${(item.price * item.quantity).toFixed(2)}`, 460, y);
-    y += 20;
+    
+    y += 25; // প্রতি লাইনের স্ট্যান্ডার্ড গ্যাপ
   });
 
   doc.moveTo(50, y + 5).lineTo(550, y + 5).stroke();

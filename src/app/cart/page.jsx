@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Header from "@/components/store/Header";
 import Footer from "@/components/store/Footer";
 import { useCartStore } from "@/store/cartStore";
@@ -9,6 +10,13 @@ import { Trash2 } from "lucide-react";
 
 export default function CartPage() {
   const { items, removeItem, updateQuantity, totalPrice } = useCartStore();
+
+  // Delivery zone state (inside_dhaka = 80, outside_dhaka = 120)
+  const [deliveryZone, setDeliveryZone] = useState("inside_dhaka");
+
+  const subtotal = totalPrice();
+  const shippingFee = deliveryZone === "inside_dhaka" ? 80 : 120;
+  const finalTotal = subtotal + shippingFee;
 
   return (
     <>
@@ -51,21 +59,73 @@ export default function CartPage() {
                 </div>
               ))}
             </div>
+
+            {/* Order Summary Section */}
             <div className="card p-6 h-fit">
               <h2 className="font-bold mb-4">Order Summary</h2>
-              <div className="flex justify-between text-sm mb-2">
+              
+              <div className="flex justify-between text-sm mb-3">
                 <span>Subtotal</span>
-                <span>৳{totalPrice().toLocaleString()}</span>
+                <span className="font-medium">৳{subtotal.toLocaleString()}</span>
               </div>
-              <div className="flex justify-between text-sm mb-4 text-gray-500">
+
+              {/* Delivery Area Selection */}
+              <div className="mb-4 pt-2 border-t">
+                <label className="block text-xs font-semibold text-gray-700 mb-2">
+                  Delivery Location
+                </label>
+                <div className="space-y-2">
+                  <label className={`flex items-center justify-between p-2.5 border rounded-lg text-xs cursor-pointer transition-all ${deliveryZone === "inside_dhaka" ? "border-primary-600 bg-primary-50/30 font-semibold" : "border-gray-200"}`}>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name="cartDelivery"
+                        value="inside_dhaka"
+                        checked={deliveryZone === "inside_dhaka"}
+                        onChange={() => setDeliveryZone("inside_dhaka")}
+                        className="text-primary-600 focus:ring-primary-500"
+                      />
+                      <span>Inside Dhaka</span>
+                    </div>
+                    <span>৳80</span>
+                  </label>
+
+                  <label className={`flex items-center justify-between p-2.5 border rounded-lg text-xs cursor-pointer transition-all ${deliveryZone === "outside_dhaka" ? "border-primary-600 bg-primary-50/30 font-semibold" : "border-gray-200"}`}>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name="cartDelivery"
+                        value="outside_dhaka"
+                        checked={deliveryZone === "outside_dhaka"}
+                        onChange={() => setDeliveryZone("outside_dhaka")}
+                        className="text-primary-600 focus:ring-primary-500"
+                      />
+                      <span>Outside Dhaka</span>
+                    </div>
+                    <span>৳120</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="flex justify-between text-sm mb-4 text-gray-600">
                 <span>Shipping</span>
-                <span>{totalPrice() > 5000 ? "Free" : "৳100.00"}</span>
+                <span className="font-medium">৳{shippingFee}</span>
               </div>
+
               <div className="flex justify-between font-bold text-lg border-t pt-4 mb-4">
                 <span>Total</span>
-                <span>৳{(totalPrice() + (totalPrice() > 5000 ? 0 : 100)).toLocaleString()}</span>
+                <span className="text-primary-700">৳{finalTotal.toLocaleString()}</span>
               </div>
-              <Link href="/checkout" className="btn-primary w-full block text-center">Proceed to Checkout</Link>
+
+              <Link 
+                href={{
+                  pathname: "/checkout",
+                  query: { zone: deliveryZone }
+                }} 
+                className="btn-primary w-full block text-center"
+              >
+                Proceed to Checkout
+              </Link>
             </div>
           </div>
         )}
