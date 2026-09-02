@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import dbConnect from "@/lib/dbConnect";
 import Product from "@/models/Product";
 import { requireRole } from "@/lib/apiAuth";
+import mongoose from "mongoose";
 
-// Netlify/Vercel Serverless Function Dynamic Config
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
@@ -18,37 +18,67 @@ export async function GET(req) {
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "12");
 
-    // Dynamic Query Builder
-    const query = {};
+    // $and অ্যারে ব্যবহার করা হচ্ছে যেন একাধিক $or ফিল্টার কনফ্লিক্ট না করে
+    const andConditions = [
+      { $or: [{ isActive: true }, { isActive: { $exists: false } }] }
+    ];
 
-    // isActive ফিল্ড না থাকলেও যেন ডাটা আসে
-    query.$or = [{ isActive: true }, { isActive: { $exists: false } }];
-
+    // Category Filtering (ObjectId vs String Name/Slug Handling)
     if (category) {
-      // Case-insensitive matching
-      query.category = { $regex: new RegExp(`^${category}$`, "i") };
+      if (mongoose.Types.ObjectId.isValid(category)) {
+        const objId = new mongoose.Types.ObjectId(category);
+        andConditions.push({
+          $or: [
+            { category: objId },
+            { category: category },
+            { "category._id": objId },
+            { "category._id": category }
+          ]
+        });
+      } else {
+        const cleanCategory = decodeURIComponent(category);
+        const categoryRegex = { $regex: new RegExp(`^${cleanCategory}$`, "i") };
+        andConditions.push({
+          $or: [
+            { category: categoryRegex },
+            { "category.name": categoryRegex },
+            { "category.slug": categoryRegex }
+          ]
+        });
+      }
     }
 
     if (featured) {
-      query.isFeatured = true;
+      andConditions.push({ isFeatured: true });
     }
 
     if (search) {
-      // Product schema-তে 'name' অথবা 'title' যেটিই থাক তা হ্যান্ডেল করবে
-      query.$or = [
-        { name: { $regex: search, $options: "i" } },
-        { title: { $regex: search, $options: "i" } },
-      ];
+      const searchRegex = { $regex: search, $options: "i" };
+      andConditions.push({
+        $or: [{ name: searchRegex }, { title: searchRegex }]
+      });
     }
+
+    const query = { $and: andConditions };
 
     const total = await Product.countDocuments(query);
 
-    // populate-এর কারণে ক্র্যাশ করা ঠেকাতে সরাসরি ক্যোয়ারী করা নিরাপদ
-    const products = await Product.find(query)
-      .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .lean();
+    let products = [];
+    try {
+      products = await Product.find(query)
+        .populate("category", "name slug")
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean();
+    } catch {
+      // If populate fails due to schema difference, fallback to normal query
+      products = await Product.find(query)
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean();
+    }
 
     return NextResponse.json(
       {
