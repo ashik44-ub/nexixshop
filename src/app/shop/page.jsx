@@ -15,38 +15,20 @@ function ShopContent() {
 
   useEffect(() => {
     setLoading(true);
-    
-    // URL Safe Query String তৈরি
-    const qs = category ? `?category=${encodeURIComponent(category)}` : "";
-
-    // cache: 'no-store' যুক্ত করা হয়েছে যাতে সরাসরি লাইভ ডাটা আসে
-    fetch(`/api/products${qs}`, { cache: "no-store" })
-      .then((r) => {
-        if (!r.ok) {
-          throw new Error(`Server status: ${r.status}`);
-        }
-        return r.json();
-      })
-      .then((data) => {
-        setProducts(data.products || []);
-      })
-      .catch((err) => {
-        console.error("Shop page products fetch error:", err);
-        setProducts([]);
-      })
+    const qs = category ? `?category=${category}` : "";
+    fetch(`/api/products${qs}`)
+      .then((r) => r.json())
+      .then((data) => setProducts(data.products || []))
       .finally(() => setLoading(false));
   }, [category]);
 
   return (
     <main className="max-w-7xl mx-auto px-4 py-8 min-h-[60vh]">
-      <h1 className="text-2xl font-bold mb-6 capitalize">
-        {category ? `${category} Products` : "Shop All Products"}
-      </h1>
-
+      <h1 className="text-2xl font-bold mb-6">Shop All Products</h1>
       {loading ? (
         <LoadingSpinner full size="lg" />
       ) : products.length === 0 ? (
-        <p className="text-gray-500 text-center py-12">No products found.</p>
+        <p className="text-gray-500">No products found.</p>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {products.map((p) => (
